@@ -1,6 +1,5 @@
-from pathlib import Path
-
-from nonebot.plugin import PluginMetadata, load_plugins
+from nonebot import require
+from nonebot.plugin import PluginMetadata
 
 __version__ = "0.1.0"
 __plugin_meta__ = PluginMetadata(
@@ -14,4 +13,4 @@ __plugin_meta__ = PluginMetadata(
     extra={"License": "MIT", "Author": "LgCookie"},
 )
 
-load_plugins(str(Path(__file__).parent.joinpath("plugins").resolve()))
+require("lgc_nb_additions.rm_duplicate_bot")
