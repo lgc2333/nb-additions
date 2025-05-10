@@ -1,26 +1,21 @@
 [project]
-name = "nonebot-plugin-example"
+name = "lgc-nb-additions"
 dynamic = ["version"]
-description = "Template plugin project"
 authors = [{ name = "LgCookie", email = "lgc2333@126.com" }]
-dependencies = ["nonebot2>=2.4.1", "nonebot-plugin-alconna>=0.54.2"]
-requires-python = ">=3.9,<4.0"
+dependencies = ["nonebot-adapter-onebot>=2.4.6", "nonebot2>=2.4.1"]
+requires-python = ">=3.12,<4.0"
 readme = "README.md"
 license = { text = "MIT" }
 
 [project.urls]
-homepage = "https://github.com/lgc-NB2Dev/nonebot-plugin-example"
+homepage = "https://github.com/lgc2333/nb-additionals"
 
 [dependency-groups]
 dev = []
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.pdm.build]
-includes = []
-
-[tool.pdm.version]
-source = "file"
-path = "nonebot_plugin_example/__init__.py"
+[tool.hatch.version]
+path = "lgc_nb_additions/__init__.py"

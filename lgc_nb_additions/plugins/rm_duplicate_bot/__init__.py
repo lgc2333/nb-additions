@@ -4,17 +4,15 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters, require
 
 require("nonebot_plugin_alconna")
 
-from . import __main__ as __main__
-from .config import ConfigModel
+from . import main as main
 
-__version__ = "0.1.0"
 __plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-example",
-    description="插件模板",
-    usage="这是一个一个一个插件模板",
+    name="群聊账号去重",
+    description="使当前所有已连接 Bot 之间不存在相同群",
+    usage="没有",
     type="application",
-    homepage="https://github.com/lgc-NB2Dev/nonebot-plugin-example",
-    config=ConfigModel,
+    homepage="https://github.com/lgc2333/nb-additionals",
+    config=None,
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
     extra={"License": "MIT", "Author": "LgCookie"},
 )
