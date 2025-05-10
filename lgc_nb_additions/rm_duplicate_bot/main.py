@@ -88,8 +88,8 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
         bots_in_group.sort(key=lambda x: bot_group_count[x.self_id])
 
         group_target = group_id_map[group_id]
-        staying_bot = bots_in_group[-1]
-        leaving_bots = bots_in_group[:-1]
+        staying_bot = bots_in_group[0]
+        leaving_bots = bots_in_group[1:]
         actions.append((group_target, staying_bot, leaving_bots))
 
     logger.info(f"Collected {len(actions)} actions")
