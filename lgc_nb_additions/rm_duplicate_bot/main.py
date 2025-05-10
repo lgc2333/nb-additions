@@ -46,6 +46,7 @@ async def quit_and_notice(
 
 
 quit_lock = asyncio.Lock()
+abort_quit_signal = asyncio.Event()
 
 
 async def _bot_connect_quit(bots: dict[str, BaseBot]):
@@ -98,6 +99,9 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
         return
 
     while True:
+        if abort_quit_signal.is_set():
+            logger.warning("Aborted")
+            return
         args = actions.pop(0)
         logger.info(f"Quitting {[x.self_id for x in args[2]]} from {args[0].id}")
         await quit_and_notice(*args)
@@ -107,9 +111,27 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
 
 
 async def bot_connect_quit_task(bots: dict[str, BaseBot]):
-    async with quit_lock:
-        with logged_suppress("Failed to run quit task"):
-            await _bot_connect_quit(bots)
+    if len(bots) <= 1:
+        return
+
+    # 如果有其他任务正在运行，就直接返回
+    if abort_quit_signal.is_set():
+        logger.info("Already processing, skipped")
+        return
+
+    # 设置信号并获取锁，防止其他任务执行
+    abort_quit_signal.set()
+
+    try:
+        async with quit_lock:
+            # avoid fetch info too many times when a bunch of bots suddenly connected
+            await asyncio.sleep(0.1)
+
+            with logged_suppress("Failed to run quit task"):
+                await _bot_connect_quit(bots)
+    finally:
+        # 无论是否执行成功，都确保信号被清除
+        abort_quit_signal.clear()
 
 
 def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
@@ -119,14 +141,13 @@ def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
     }
 
 
+@driver.on_bot_disconnect
 @driver.on_bot_connect
 async def _(bot: BaseBot):
     if type(bot) not in group_quitter.data:
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
     bots = filter_same_adapter_bot(bot, get_bots())
-    if len(bots) <= 1:
-        return
     asyncio.create_task(bot_connect_quit_task(bots))
 
 
@@ -136,24 +157,29 @@ async def _(bot: BaseBot, target: Target):
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
 
-    bots = filter_same_adapter_bot(bot, get_bots())
-    del bots[bot.self_id]
-    if len(bots) <= 1:
-        return
-
     # 退出除被邀请 Bot 的所有本实例 Bot
 
-    targets_ret = await asyncio.gather(
-        *(fetch_targets(b) for b in bots.values()),
-    )
-    in_group_other_bots = [
-        b
-        for b, t in zip(bots.values(), targets_ret)
-        if (t and next((x for x in t if x.id == target.id and (not x.private)), None))
-    ]
-
-    if not in_group_other_bots:
-        return
-
     async with quit_lock:
+        bots = filter_same_adapter_bot(bot, get_bots())
+        if bot.self_id not in bots:
+            return
+        del bots[bot.self_id]
+        if len(bots) <= 1:
+            return
+
+        targets_ret = await asyncio.gather(
+            *(fetch_targets(b) for b in bots.values()),
+        )
+        in_group_other_bots = [
+            b
+            for b, t in zip(bots.values(), targets_ret)
+            if (
+                t
+                and next((x for x in t if x.id == target.id and (not x.private)), None)
+            )
+        ]
+
+        if not in_group_other_bots:
+            return
+
         await quit_and_notice(target, bot, in_group_other_bots)
