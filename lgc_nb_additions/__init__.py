@@ -3,7 +3,7 @@ from nonebot.plugin import PluginMetadata
 
 __version__ = "0.1.0"
 __plugin_meta__ = PluginMetadata(
-    name="LgCookie Additionals",
+    name="LgCookie Additions",
     description="一些个人的实用小插件",
     usage="没有",
     type="application",
