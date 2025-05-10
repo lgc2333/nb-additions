@@ -3,6 +3,7 @@ import random
 from collections import defaultdict
 
 from cookit.loguru import logged_suppress, warning_suppress
+from debouncer import debounce
 from nonebot import get_bots, get_driver, logger
 from nonebot.adapters import Bot as BaseBot
 from nonebot_plugin_alconna.uniseg import Target
@@ -50,6 +51,9 @@ abort_quit_signal = asyncio.Event()
 
 
 async def _bot_connect_quit(bots: dict[str, BaseBot]):
+    if len(bots) <= 1:
+        return
+
     targets_ret = await asyncio.gather(
         *(fetch_targets(b) for b in bots.values()),
     )
@@ -100,6 +104,7 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
 
     while True:
         if abort_quit_signal.is_set():
+            abort_quit_signal.clear()
             logger.warning("Aborted")
             return
         args = actions.pop(0)
@@ -111,27 +116,10 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
 
 
 async def bot_connect_quit_task(bots: dict[str, BaseBot]):
-    if len(bots) <= 1:
-        return
-
-    # 如果有其他任务正在运行，就直接返回
-    if abort_quit_signal.is_set():
-        logger.info("Already processing, skipped")
-        return
-
-    # 设置信号并获取锁，防止其他任务执行
-    abort_quit_signal.set()
-
-    try:
-        async with quit_lock:
-            # avoid fetch info too many times when a bunch of bots suddenly connected
-            await asyncio.sleep(0.1)
-
-            with logged_suppress("Failed to run quit task"):
-                await _bot_connect_quit(bots)
-    finally:
-        # 无论是否执行成功，都确保信号被清除
+    async with quit_lock:
         abort_quit_signal.clear()
+        with logged_suppress("Failed to run quit task"):
+            await _bot_connect_quit(bots)
 
 
 def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
@@ -143,10 +131,16 @@ def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
 
 @driver.on_bot_disconnect
 @driver.on_bot_connect
+@debounce(0.5)
 async def _(bot: BaseBot):
     if type(bot) not in group_quitter.data:
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
+
+    if abort_quit_signal.is_set():
+        logger.info("Aborting, then will re-run, skip execute task")
+    abort_quit_signal.set()
+
     bots = filter_same_adapter_bot(bot, get_bots())
     asyncio.create_task(bot_connect_quit_task(bots))
 
