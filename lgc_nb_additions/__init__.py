@@ -13,4 +13,4 @@ __plugin_meta__ = PluginMetadata(
     extra={"License": "MIT", "Author": "LgCookie"},
 )
 
-require("lgc_nb_additions.rm_duplicate_bot")
+require("lgc_nb_additions.leave_duplicate_group")
