@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 
-from nonebot.plugin import PluginMetadata, require
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters, require
 
 require("nonebot_plugin_alconna")
 
@@ -13,6 +13,6 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     homepage="https://github.com/lgc2333/nb-additions",
     config=None,
-    supported_adapters={"~onebot.v11"},
+    supported_adapters=inherit_supported_adapters("lgc_nb_additions.uniapi"),
     extra={"License": "MIT", "Author": "LgCookie"},
 )

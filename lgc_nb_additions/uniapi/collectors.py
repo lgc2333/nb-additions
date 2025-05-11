@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from cookit import TypeDecoCollector
 from nonebot.adapters import Bot as BaseBot
@@ -19,8 +19,10 @@ class BotTypeCollector[T](TypeDecoCollector[BaseBot, T]):
 
 
 class GroupQuitterCollector(BotTypeCollector[GroupQuitter]):
-    @override
-    def __call__[V: GroupQuitter](self, key: type[BaseBot]) -> Callable[[V], V]: ...
+    if TYPE_CHECKING:
+
+        @override
+        def __call__[V: GroupQuitter](self, key: type[BaseBot]) -> Callable[[V], V]: ...
 
 
 group_quitter = GroupQuitterCollector()
@@ -29,8 +31,10 @@ group_quitter = GroupQuitterCollector()
 class BotGroupJoinListCollector(
     AsyncCallableListCollector[[BaseBot, Target], Awaitable[Any]],
 ):
-    @override
-    def __call__[T: GroupJoinListener](self, obj: T) -> T: ...
+    if TYPE_CHECKING:
+
+        @override
+        def __call__[T: GroupJoinListener](self, obj: T) -> T: ...
 
 
 bot_group_join_listener = BotGroupJoinListCollector()
