@@ -9,7 +9,7 @@ from nonebot.adapters import Bot as BaseBot
 from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
 
-from .adapters.base import bot_group_join_listener, group_quitter
+from ..utils.uniapi.collectors import bot_group_join_listener, group_quitter
 
 driver = get_driver()
 
@@ -133,7 +133,7 @@ def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
 @driver.on_bot_connect
 @debounce(0.5)
 async def _(bot: BaseBot):
-    if type(bot) not in group_quitter.data:
+    if not group_quitter.supported(bot):
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
 
@@ -146,8 +146,9 @@ async def _(bot: BaseBot):
 
 
 @bot_group_join_listener
+@debounce(0.5)
 async def _(bot: BaseBot, target: Target):
-    if type(bot) not in group_quitter.data:
+    if not group_quitter.supported(bot):
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
 
