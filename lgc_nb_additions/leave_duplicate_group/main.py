@@ -9,7 +9,7 @@ from nonebot.adapters import Bot as BaseBot
 from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
 
-from ..utils.uniapi.collectors import bot_group_join_listener, group_quitter
+from ..uniapi.collectors import bot_group_join_listener, group_quitter
 
 driver = get_driver()
 

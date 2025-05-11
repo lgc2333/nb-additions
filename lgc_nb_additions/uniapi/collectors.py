@@ -5,7 +5,7 @@ from cookit import TypeDecoCollector
 from nonebot.adapters import Bot as BaseBot
 from nonebot_plugin_alconna.uniseg import Target
 
-from ...utils.common import AsyncCallableListCollector
+from ..utils.common import AsyncCallableListCollector
 
 type GroupQuitter = Callable[[BaseBot, Target], Awaitable[Any]]
 type GroupJoinListener = Callable[[BaseBot, Target], Awaitable[Any]]
