@@ -30,12 +30,12 @@ def parse_target(v: str) -> Target:
     args = v.split(":")
 
     platform_str = args.pop(0)
-    scope: str | None = None
-    adapter: str | None = None
-    if platform_str in SupportScope._member_names_:
-        scope = platform_str
-    elif platform_str in SupportAdapter._member_names_:
-        adapter = platform_str
+    scope: SupportScope | None = None
+    adapter: SupportAdapter | None = None
+    if platform_str in SupportScope.__members__:
+        scope = SupportScope.__members__[platform_str]
+    elif platform_str in SupportAdapter.__members__:
+        adapter = SupportAdapter.__members__[platform_str]
     else:
         raise ValueError("Wrong scope / adapter")
 
