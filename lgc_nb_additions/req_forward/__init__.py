@@ -8,7 +8,7 @@ from . import main as main
 
 __plugin_meta__ = PluginMetadata(
     name="请求转发",
-    description="把 Bot 收到的好友与邀群请求转发到指定群由邀请用户处理",
+    description="把 Bot 收到的好友与邀群请求转发到指定群由邀请用户或超管处理",
     usage="没有",
     type="application",
     homepage="https://github.com/lgc2333/nb-additions",
