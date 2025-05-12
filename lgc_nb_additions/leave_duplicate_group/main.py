@@ -94,7 +94,7 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
         return
 
     bot_in_guilds = defaultdict[str, set[str]](set)
-    for bot_id, guilds in bot_targets:
+    for bot_id, guilds in bot_targets.items():
         for guild in guilds:
             bot_in_guilds[guild].add(bot_id)
 

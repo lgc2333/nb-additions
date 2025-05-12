@@ -16,7 +16,7 @@ from ..uniapi.collectors import (
 )
 from ..utils.common import confuse_string, extract_guild_scene
 from .config import config
-from .db import ReqForwardRequestInfo, RequestStatus, RequestType
+from .db import RequestInfo, RequestStatus, RequestType
 
 alc = Alconna(
     "confirm-req",
@@ -42,7 +42,7 @@ async def _(
     q_req_id: Query[str] = Query("~req_id"),
 ):
     async with ss.begin() as t:
-        req = await ss.get(ReqForwardRequestInfo, q_req_id)
+        req = await ss.get(RequestInfo, q_req_id)
         if (not req) or req.status is RequestStatus.CONFIRMED:
             await UniMessage.text("未找到该请求").finish(reply_to=True)
 
@@ -88,7 +88,7 @@ async def _(bot: BaseBot, data: FriendRequestData):
     uid = data.session.user.id
     async with get_session() as ss:
         ss.add(
-            ReqForwardRequestInfo(
+            RequestInfo(
                 type=RequestType.FRIEND,
                 bot_id=bot.self_id,
                 user_id=uid,
@@ -118,7 +118,7 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
     uid = data.session.user.id
     async with get_session() as ss, ss.begin() as t:
         ss.add(
-            ReqForwardRequestInfo(
+            RequestInfo(
                 type=RequestType.GUILD_INVITE,
                 bot_id=bot.self_id,
                 user_id=uid,

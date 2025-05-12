@@ -21,7 +21,9 @@ def generate_request_id() -> str:
     return "".join(random.sample(string.ascii_letters + string.digits, k=8))
 
 
-class ReqForwardRequestInfo(Model):
+class RequestInfo(Model):
+    __tablename__ = "lgc_req_forward_request_info"
+
     id: Mapped[str] = mapped_column(
         String(8),
         primary_key=True,
