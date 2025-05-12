@@ -14,9 +14,9 @@ from ..uniapi.collectors import (
     guild_invite_request_listener,
     guild_invite_request_processor,
 )
-from ..utils.common import confuse_string, extract_guild_scene
+from ..utils.common import confuse_string, extract_guild_scene, select_bot_in_target
 from .config import config
-from .db import RequestInfo, RequestStatus, RequestType
+from .db import RequestInfo, RequestStatus, RequestType, generate_request_id
 
 alc = Alconna(
     "confirm-req",
@@ -42,7 +42,7 @@ async def _(
     q_req_id: Query[str] = Query("~req_id"),
 ):
     async with ss.begin() as t:
-        req = await ss.get(RequestInfo, q_req_id)
+        req = await ss.get(RequestInfo, q_req_id.result)
         if (not req) or req.status is RequestStatus.CONFIRMED:
             await UniMessage.text("未找到该请求").finish(reply_to=True)
 
@@ -87,8 +87,10 @@ async def _(
 async def _(bot: BaseBot, data: FriendRequestData):
     uid = data.session.user.id
     async with get_session() as ss:
+        rid = generate_request_id()
         ss.add(
             RequestInfo(
+                id=rid,
                 type=RequestType.FRIEND,
                 bot_id=bot.self_id,
                 user_id=uid,
@@ -97,15 +99,17 @@ async def _(bot: BaseBot, data: FriendRequestData):
         )
         await ss.commit()
 
-    logger.info(f"Friend request from {uid}, identifier: {data.identifier}")
+    logger.info(
+        f"Friend request from {uid}, identifier: {data.identifier}, request id: {rid}",
+    )
     if config.parsed_target:
         await config.parsed_target.send(
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的好友请求，请您发送以下内容自行同意：\n"
-                f"confirm-req {data.identifier}",
+                f" ({uid}) 的好友请求，请您发送以下内容自行同意：\nconfirm-req {rid}",
             ),
+            bot=await select_bot_in_target(config.parsed_target),
         )
 
 
@@ -117,8 +121,10 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
 
     uid = data.session.user.id
     async with get_session() as ss, ss.begin() as t:
+        rid = generate_request_id()
         ss.add(
             RequestInfo(
+                id=rid,
                 type=RequestType.GUILD_INVITE,
                 bot_id=bot.self_id,
                 user_id=uid,
@@ -128,7 +134,9 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
         await t.commit()
 
     logger.info(
-        f"Guild invite request to {scene.id} from {uid}, identifier: {data.identifier}",
+        f"Guild invite request to {scene.id} from {uid}"
+        f", identifier: {data.identifier}"
+        f", request id: {rid}",
     )
     if config.parsed_target:
         await config.parsed_target.send(
@@ -137,6 +145,7 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
             .text(
                 f" ({uid}) 的邀群请求 ({confuse_string(scene.id)})"
                 f"，请您发送以下内容自行同意：\n"
-                f"confirm-req {data.identifier}",
+                f"confirm-req {rid}",
             ),
+            bot=await select_bot_in_target(config.parsed_target),
         )

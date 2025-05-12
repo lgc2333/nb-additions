@@ -11,17 +11,21 @@ from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
 from nonebot_plugin_uninfo import Session
 
-from ..uniapi.collectors import bot_guild_join_listener, guild_quitter
+from ..uniapi.collectors import (
+    GuildJoinListener,
+    bot_guild_join_listener,
+    guild_quitter,
+)
 from ..utils.common import extract_guild_scene
 
 driver = get_driver()
 
 
 def extract_guild_id_from_target(target: Target) -> str | None:
-    if target.channel:
-        return target.parent_id
     if target.private:
         return None
+    if target.channel:
+        return target.parent_id
     return target.id
 
 
@@ -165,8 +169,19 @@ async def _(bot: BaseBot):
     asyncio.create_task(bot_connect_quit_task(bots))
 
 
+def debounce_by_guild_id(f: GuildJoinListener) -> GuildJoinListener:
+    debounces = defaultdict(lambda: debounce(0.5))
+
+    async def wrapper(bot: BaseBot, ev: Session):
+        scene = extract_guild_scene(ev)
+        assert scene
+        return await debounces[scene.id](f)(bot, ev)
+
+    return wrapper
+
+
 @bot_guild_join_listener
-@debounce(0.5)
+@debounce_by_guild_id
 async def _(bot: BaseBot, ev: Session):
     if not guild_quitter.supported(bot):
         logger.debug(f"{bot.adapter.get_name()} not supported")
@@ -188,18 +203,24 @@ async def _(bot: BaseBot, ev: Session):
         targets_ret = await asyncio.gather(
             *(fetch_targets(b) for b in bots.values()),
         )
-        in_group_other_infos = [
-            (b, t)
+        in_group_other_bots = [
+            b
             for b, t in zip(bots.values(), targets_ret)
             if (t and next(filter_targets_by_guild_id(t, scene.id), None))
         ]
 
-        if not in_group_other_infos:
+        if not in_group_other_bots:
             return
 
+        notifier_targets = await fetch_targets(bot)
+        notifies = (
+            filter_targets_by_guild_id(notifier_targets, scene.id)
+            if notifier_targets
+            else None
+        )
         await quit_and_notice(
             scene.id,
-            (x for x, _ in in_group_other_infos),
+            in_group_other_bots,
             bot,
-            in_group_other_infos[0][1],
+            notifies,
         )

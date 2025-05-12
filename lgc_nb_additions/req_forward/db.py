@@ -27,7 +27,7 @@ class RequestInfo(Model):
     id: Mapped[str] = mapped_column(
         String(8),
         primary_key=True,
-        default=generate_request_id,
+        # default=generate_request_id,
     )
     status: Mapped[RequestStatus] = mapped_column(default=RequestStatus.PENDING)
     type: Mapped[RequestType]
