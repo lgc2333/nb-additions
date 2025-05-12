@@ -3,6 +3,7 @@ from collections.abc import Awaitable, Callable
 
 from cookit import DecoListCollector, with_semaphore
 from nonebot_plugin_alconna.uniseg import SupportAdapter, SupportScope, Target
+from nonebot_plugin_uninfo import Session
 
 
 class AsyncCallableListCollector[**P, R](DecoListCollector[Callable[P, Awaitable[R]]]):
@@ -64,3 +65,18 @@ def target_validator(v: str | None) -> str | None:
     if v:
         parse_target(v)
     return v
+
+
+def extract_guild_scene(ev: Session):
+    if (s := ev.group) or (s := ev.guild):
+        return s
+    return None
+
+
+def confuse_string(string: str, head: int = 2, tail: int = 2, symbol: str = "*") -> str:
+    if not string:
+        return ""
+    string_len = len(string)
+    if string_len <= head + tail:
+        return string
+    return string[:head] + symbol * (string_len - head - tail) + string[-tail:]

@@ -1,8 +1,4 @@
-# ruff: noqa: E402
-
-from nonebot.plugin import PluginMetadata, inherit_supported_adapters, require
-
-require("nonebot_plugin_alconna")
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 from . import main as main
 

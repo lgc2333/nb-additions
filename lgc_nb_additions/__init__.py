@@ -1,6 +1,10 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
+require("nonebot_plugin_alconna")
+require("nonebot_plugin_uninfo")
+require("nonebot_plugin_orm")
+
 require("lgc_nb_additions.uniapi")
 
 require("lgc_nb_additions.leave_duplicate_group")

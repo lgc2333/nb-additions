@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Protocol, override
 
 from cookit import TypeDecoCollector
 from nonebot.adapters import Bot as BaseBot
-from nonebot_plugin_alconna.uniseg import Target
+from nonebot_plugin_uninfo import Session
 from pydantic import BaseModel
 
 from ..utils.common import AsyncCallableListCollector
@@ -18,35 +18,37 @@ class BotTypeCollector[T](TypeDecoCollector[BaseBot, T]):
 
 # region group quitter
 
-type GroupQuitter = Callable[[BaseBot, Target], Awaitable[Any]]
+
+class GuildQuitter(Protocol):
+    async def __call__(self, bot: BaseBot, guild_id: str) -> bool | None: ...
 
 
-class GroupQuitterCollector(BotTypeCollector[GroupQuitter]):
+class GroupQuitterCollector(BotTypeCollector[GuildQuitter]):
     if TYPE_CHECKING:
 
         @override
-        def __call__[V: GroupQuitter](self, key: type[BaseBot]) -> Callable[[V], V]: ...
+        def __call__[V: GuildQuitter](self, key: type[BaseBot]) -> Callable[[V], V]: ...
 
 
-group_quitter = GroupQuitterCollector()
+guild_quitter = GroupQuitterCollector()
 
 # endregion
 
 # region group join listener
 
-type GroupJoinListener = Callable[[BaseBot, Target], Awaitable[Any]]
+type GuildJoinListener = Callable[[BaseBot, Session], Awaitable[Any]]
 
 
 class BotGroupJoinListenerCollector(
-    AsyncCallableListCollector[[BaseBot, Target], Any],
+    AsyncCallableListCollector[[BaseBot, Session], Any],
 ):
     if TYPE_CHECKING:
 
         @override
-        def __call__[T: GroupJoinListener](self, obj: T) -> T: ...
+        def __call__[T: GuildJoinListener](self, obj: T) -> T: ...
 
 
-bot_group_join_listener = BotGroupJoinListenerCollector()
+bot_guild_join_listener = BotGroupJoinListenerCollector()
 
 # endregion
 
@@ -54,7 +56,7 @@ bot_group_join_listener = BotGroupJoinListenerCollector()
 
 
 class FriendRequestData(BaseModel):
-    user_id: str
+    session: Session
     identifier: str
     raw: Any = None
 
@@ -82,7 +84,7 @@ class FriendRequestProcessor(Protocol):
     async def __call__(
         self,
         bot: BaseBot,
-        data: FriendRequestData,
+        identifier: str,
         approve: bool,
     ) -> bool | None: ...
 
@@ -104,56 +106,55 @@ friend_request_processor = FriendRequestProcessorCollector()
 # region group invite listener
 
 
-class GroupInviteRequestData(BaseModel):
-    user_id: str
-    group_id: str
+class GuildInviteRequestData(BaseModel):
+    session: Session
     identifier: str
     raw: Any = None
 
 
-type GroupInviteRequestListener = Callable[
-    [BaseBot, GroupInviteRequestData],
+type GuildInviteRequestListener = Callable[
+    [BaseBot, GuildInviteRequestData],
     Awaitable[Any],
 ]
 
 
-class GroupInviteRequestListenerCollector(
-    AsyncCallableListCollector[[BaseBot, GroupInviteRequestData], Any],
+class GuildInviteRequestListenerCollector(
+    AsyncCallableListCollector[[BaseBot, GuildInviteRequestData], Any],
 ):
     if TYPE_CHECKING:
 
         @override
-        def __call__[T: GroupInviteRequestListener](self, obj: T) -> T: ...
+        def __call__[T: GuildInviteRequestListener](self, obj: T) -> T: ...
 
 
-group_invite_request_listener = GroupInviteRequestListenerCollector()
+guild_invite_request_listener = GuildInviteRequestListenerCollector()
 
 # endregion
 
 # region group invite processor
 
 
-class GroupInviteRequestProcessor(Protocol):
+class GuildInviteRequestProcessor(Protocol):
     async def __call__(
         self,
         bot: BaseBot,
-        data: GroupInviteRequestData,
+        identifier: str,
         approve: bool,
     ) -> bool | None: ...
 
 
-class GroupInviteRequestProcessorCollector(
-    BotTypeCollector[GroupInviteRequestProcessor],
+class GuildInviteRequestProcessorCollector(
+    BotTypeCollector[GuildInviteRequestProcessor],
 ):
     if TYPE_CHECKING:
 
         @override
-        def __call__[V: GroupInviteRequestProcessor](
+        def __call__[V: GuildInviteRequestProcessor](
             self,
             key: type[BaseBot],
         ) -> Callable[[V], V]: ...
 
 
-group_invite_request_processor = GroupInviteRequestProcessorCollector()
+guild_invite_request_processor = GuildInviteRequestProcessorCollector()
 
 # endregion
