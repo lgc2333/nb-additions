@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from nonebot import on_notice
+from nonebot import on_notice, on_request
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import (
     Bot,
@@ -38,7 +38,7 @@ async def _(bot: Bot, ev: Uninfo):
     await bot_guild_join_listener.gather(bot, ev)
 
 
-@on_notice().handle()
+@on_request().handle()
 async def _(bot: Bot, ev: FriendRequestEvent, s: Uninfo):
     await friend_request_listener.gather(
         bot,
@@ -57,7 +57,7 @@ async def group_invite_rule(ev: GroupRequestEvent):
     return ev.sub_type == "invite"
 
 
-@on_notice(rule=group_invite_rule).handle()
+@on_request(rule=group_invite_rule).handle()
 async def _(bot: Bot, ev: GroupRequestEvent, s: Uninfo):
     await guild_invite_request_listener.gather(
         bot,
