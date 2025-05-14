@@ -46,7 +46,7 @@ async def _(
         if (not req) or req.status is RequestStatus.CONFIRMED:
             await UniMessage.text("未找到该请求").finish(reply_to=True)
 
-        if req.id != ev.user.id and not await SUPERUSER(bot, raw_ev):
+        if req.user_id != ev.user.id and not await SUPERUSER(bot, raw_ev):
             await UniMessage.text("你无权操作此请求").finish(reply_to=True)
 
         try:
