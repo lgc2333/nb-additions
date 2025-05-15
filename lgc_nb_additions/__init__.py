@@ -7,7 +7,6 @@ require("nonebot_plugin_orm")
 
 require("lgc_nb_additions.uniapi")
 require("lgc_nb_additions.target_sync")
-require("lgc_nb_additions.fix_qq_pic_ssl")
 
 require("lgc_nb_additions.leave_duplicate_group")
 require("lgc_nb_additions.req_forward")
