@@ -14,7 +14,7 @@ from ..uniapi.collectors import (
     guild_invite_request_listener,
     guild_invite_request_processor,
 )
-from ..utils.common import confuse_string, extract_guild_scene, select_bot_in_target
+from ..utils.common import confuse_string, extract_guild_scene
 from .config import config
 from .db import RequestInfo, RequestStatus, RequestType, generate_request_id
 
@@ -109,7 +109,7 @@ async def _(bot: BaseBot, data: FriendRequestData):
             .text(
                 f" ({uid}) 的好友请求，请您发送以下内容自行同意：\nconfirm-req {rid}",
             ),
-            bot=await select_bot_in_target(config.parsed_target),
+            bot=await config.parsed_target.select(),
         )
 
 
@@ -147,5 +147,5 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
                 f"，请您发送以下内容自行同意：\n"
                 f"confirm-req {rid}",
             ),
-            bot=await select_bot_in_target(config.parsed_target),
+            bot=await config.parsed_target.select(),
         )

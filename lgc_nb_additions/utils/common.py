@@ -1,11 +1,14 @@
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections import defaultdict
+from collections.abc import Awaitable, Callable, Coroutine
+from contextlib import suppress
+from functools import wraps
+from typing import Any
 
 from cookit import DecoListCollector, with_semaphore
-from nonebot.adapters import Bot as BaseBot
-from nonebot_plugin_alconna import get_bot as alconna_get_bot
+from debouncer import debounce
+from debouncer.debounce import Debounced
 from nonebot_plugin_alconna.uniseg import SupportAdapter, SupportScope, Target
-from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
 from nonebot_plugin_uninfo import Session
 
 
@@ -64,30 +67,6 @@ def parse_target(v: str) -> Target:
     )
 
 
-async def select_bot_in_target(target: Target, refresh_cache: bool = True):
-    if not target.adapter and not target.scope:
-        raise ValueError("Target must have adapter or scope")
-
-    async def get_bot_predicate(bot: BaseBot) -> bool:
-        fetcher = alter_get_fetcher(bot.adapter.get_name())
-        if not fetcher:
-            return False
-
-        targets = fetcher.cache[bot.self_id]
-        if not next((True for x in targets if target == x), False):
-            return False
-
-        if refresh_cache:
-            await fetcher.refresh(bot, target)
-            targets = fetcher.cache[bot.self_id]
-            if not next((True for x in targets if target == x), False):
-                return False
-
-        return True
-
-    return (await alconna_get_bot(predicate=get_bot_predicate))[0]
-
-
 def target_validator(v: str | None) -> str | None:
     if v:
         parse_target(v)
@@ -107,3 +86,40 @@ def confuse_string(string: str, head: int = 2, tail: int = 2, symbol: str = "*")
     if string_len <= head + tail:
         return string
     return string[:head] + symbol * (string_len - head - tail) + string[-tail:]
+
+
+type CoT[T] = Coroutine[Any, Any, T]
+type DebounceDeco[**P, R] = Callable[
+    [Callable[P, CoT[R]]],
+    Debounced[P, CoT[R | None]],
+]
+
+
+def call_limiter[K, **P, R](
+    key_getter: Callable[P, CoT[K]],
+    debounce_time: float = 0.5,
+):
+    def deco(f: Callable[P, CoT[R]]) -> Callable[P, CoT[R | None]]:
+        debounces = defaultdict[K, DebounceDeco[[], R | None]](
+            lambda: debounce(debounce_time),
+        )
+        tasks: dict[K, asyncio.Task[R]] = {}
+
+        @wraps(f)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs):
+            key = await key_getter(*args, **kwargs)
+
+            async def create_task():
+                if key in tasks:
+                    tasks[key].cancel()
+                task = asyncio.create_task(f(*args, **kwargs))
+                tasks[key] = task
+                with suppress(asyncio.CancelledError):
+                    return await task
+                return None
+
+            return await debounces[key](create_task)()
+
+        return wrapper
+
+    return deco

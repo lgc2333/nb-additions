@@ -1,55 +1,26 @@
 import asyncio
 import random
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
+from contextlib import suppress
 
 from cookit.loguru import logged_suppress, warning_suppress
-from debouncer import debounce
 from nonebot import get_bots, get_driver, logger
 from nonebot.adapters import Bot as BaseBot
 from nonebot_plugin_alconna.uniseg import Target
-from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
-from nonebot_plugin_uninfo import Session
+from nonebot_plugin_uninfo import Interface, Scene, SceneType, Session, get_interface
 
-from ..uniapi.collectors import (
-    GuildJoinListener,
-    bot_guild_join_listener,
-    guild_quitter,
-)
-from ..utils.common import extract_guild_scene
+from ..uniapi.collectors import bot_guild_join_listener, guild_quitter
+from ..utils.common import call_limiter, extract_guild_scene
 
 driver = get_driver()
 
 
-def extract_guild_id_from_target(target: Target) -> str | None:
-    if target.private:
-        return None
-    if target.channel:
-        return target.parent_id
-    return target.id
-
-
-def filter_targets_by_guild_id(
-    targets: Iterable[Target],
-    guild_id: str,
-) -> Iterator[Target]:
-    return (x for x in targets if extract_guild_id_from_target(x) == guild_id)
-
-
-def map_targets_by_guild(targets: Iterable[Target]) -> dict[str, set[Target]]:
-    mapped = defaultdict[str, set[Target]](set)
-    for x in targets:
-        if g := extract_guild_id_from_target(x):
-            mapped[g].add(x)
-    return mapped
-
-
-async def fetch_targets(bot: BaseBot) -> set[Target] | None:
-    fetcher = alter_get_fetcher(bot.adapter.get_name())
-    if not fetcher:
-        return None
-    await fetcher.refresh(bot)
-    return fetcher.cache[bot.self_id]
+async def fetch_scenes(interface: Interface):
+    return [
+        *await interface.get_scenes(SceneType.GROUP),
+        *await interface.get_scenes(SceneType.GUILD),
+    ]
 
 
 async def safe_quit(bot: BaseBot, group_id: str):
@@ -80,55 +51,74 @@ async def quit_and_notice(
     await asyncio.gather(*(safe_quit(b, guild_id) for b in quit_bots))
 
 
+async def fetch_notify_targets(bot: BaseBot, scene: Scene) -> list[Target]:
+    if scene.type <= SceneType.GROUP:
+        return [Target.group(scene.id)]
+
+    if not (itf := get_interface(bot)):
+        logger.warning(f"Cannot get interface for bot {bot.self_id}")
+        return []
+
+    with warning_suppress(
+        f"Failed to get bot {bot.self_id} guild {scene.id} channels",
+    ):
+        children = await itf.get_scenes(
+            SceneType.CHANNEL_TEXT,
+            parent_scene_id=scene.id,
+        )
+        return [Target.channel_(channel_id=x.id, guild_id=scene.id) for x in children]
+
+    return []
+
+
 quit_lock = asyncio.Lock()
-abort_quit_signal = asyncio.Event()
 
 
 async def _bot_connect_quit(bots: dict[str, BaseBot]):
     if len(bots) <= 1:
         return
 
-    targets_ret = await asyncio.gather(
-        *(fetch_targets(b) for b in bots.values()),
+    scenes_ret = await asyncio.gather(
+        *(fetch_scenes(it) for b in bots.values() if (it := get_interface(b))),
     )
-    bot_targets = {k: map_targets_by_guild(v) for k, v in zip(bots, targets_ret) if v}
-    del targets_ret
+    bot_scenes = {k: {x.id: x for x in v} for k, v in zip(bots, scenes_ret) if v}
+    del scenes_ret
 
-    if len(bot_targets) <= 1:
+    if len(bot_scenes) <= 1:
         return
 
-    bot_in_guilds = defaultdict[str, set[str]](set)
-    for bot_id, guilds in bot_targets.items():
+    # guild_id: set[bot_id]
+    guild_inner_bots = defaultdict[str, set[str]](set)
+    for bot_id, guilds in bot_scenes.items():
         for guild in guilds:
-            bot_in_guilds[guild].add(bot_id)
+            guild_inner_bots[guild].add(bot_id)
 
     # 群聊账号去重 使当前所有已连接 Bot 之间不存在相同群
     # 退群规则: 优先退群总量多的
 
-    actions: list[tuple[str, list[BaseBot], BaseBot, set[Target]]] = []
+    actions: list[tuple[str, list[BaseBot], BaseBot, list[Target]]] = []
 
-    for guild_id, bot_ids in bot_in_guilds.items():
+    for guild_id, bot_ids in guild_inner_bots.items():
         if len(bot_ids) <= 1:
             continue
 
-        bots_in_group = [bots[x] for x in bot_ids]
-        bots_in_group.sort(key=lambda x: len(bot_in_guilds[x.self_id]))
+        bots_in_guild = [bots[x] for x in bot_ids]
+        bots_in_guild.sort(key=lambda x: len(bot_scenes[x.self_id]))
 
-        staying_bot = bots_in_group.pop(0)
-        for bot in bots_in_group:
-            bot_in_guilds[guild_id].remove(bot.self_id)
-        notify_targets = bot_targets[staying_bot.self_id][guild_id]
-        actions.append((guild_id, bots_in_group, staying_bot, notify_targets))
+        staying_bot = bots_in_guild.pop(0)
+        for bot in bots_in_guild:
+            del bot_scenes[bot.self_id][guild_id]
+
+        scene = bot_scenes[staying_bot.self_id][guild_id]
+        notify_targets = await fetch_notify_targets(staying_bot, scene)
+
+        actions.append((guild_id, bots_in_guild, staying_bot, notify_targets))
 
     logger.info(f"Collected {len(actions)} actions")
     if not actions:
         return
 
     while True:
-        if abort_quit_signal.is_set():
-            abort_quit_signal.clear()
-            logger.warning("Aborted")
-            return
         args = actions.pop(0)
         logger.info(
             f"Quitting {' & '.join([x.self_id for x in args[1]])} from {args[0]}",
@@ -139,13 +129,6 @@ async def _bot_connect_quit(bots: dict[str, BaseBot]):
         await asyncio.sleep(random.uniform(5, 10))
 
 
-async def bot_connect_quit_task(bots: dict[str, BaseBot]):
-    async with quit_lock:
-        abort_quit_signal.clear()
-        with logged_suppress("Failed to run quit task"):
-            await _bot_connect_quit(bots)
-
-
 def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
     adapter_name = bot.adapter.get_name()
     return {
@@ -153,35 +136,35 @@ def filter_same_adapter_bot(bot: BaseBot, should_filter: dict[str, BaseBot]):
     }
 
 
+async def bot_connect_limiter_key_getter(bot: BaseBot):
+    return bot.adapter.get_name()
+
+
 @driver.on_bot_disconnect
 @driver.on_bot_connect
-@debounce(0.5)
+@call_limiter(bot_connect_limiter_key_getter)
 async def _(bot: BaseBot):
     if not guild_quitter.supported(bot):
         logger.debug(f"{bot.adapter.get_name()} not supported")
         return
 
-    if abort_quit_signal.is_set():
-        logger.info("Aborting, then will re-run, skip execute task")
-    abort_quit_signal.set()
-
     bots = filter_same_adapter_bot(bot, get_bots())
-    asyncio.create_task(bot_connect_quit_task(bots))
+    with (
+        logged_suppress("Failed to run quit task"),
+        suppress(asyncio.CancelledError),
+    ):
+        async with quit_lock:
+            await _bot_connect_quit(bots)
 
 
-def debounce_by_guild_id(f: GuildJoinListener) -> GuildJoinListener:
-    debounces = defaultdict(lambda: debounce(0.5))
-
-    async def wrapper(bot: BaseBot, ev: Session):
-        scene = extract_guild_scene(ev)
-        assert scene
-        return await debounces[scene.id](f)(bot, ev)
-
-    return wrapper
+async def guild_join_limiter_key_getter(bot: BaseBot, ev: Session):  # noqa: ARG001
+    scene = extract_guild_scene(ev)
+    assert scene
+    return f"{ev.adapter}:{scene.id}"
 
 
 @bot_guild_join_listener
-@debounce_by_guild_id
+@call_limiter(guild_join_limiter_key_getter)
 async def _(bot: BaseBot, ev: Session):
     if not guild_quitter.supported(bot):
         logger.debug(f"{bot.adapter.get_name()} not supported")
@@ -200,27 +183,19 @@ async def _(bot: BaseBot, ev: Session):
         if not scene:
             return
 
-        targets_ret = await asyncio.gather(
-            *(fetch_targets(b) for b in bots.values()),
+        scenes_ret = await asyncio.gather(
+            *(fetch_scenes(it) for b in bots.values() if (it := get_interface(b))),
         )
-        in_group_other_bots = [
-            b
-            for b, t in zip(bots.values(), targets_ret)
-            if (t and next(filter_targets_by_guild_id(t, scene.id), None))
-        ]
+        bot_scenes = {k: {x.id: x for x in v} for k, v in zip(bots, scenes_ret) if v}
+        del scenes_ret
 
-        if not in_group_other_bots:
+        in_guild_other_bots = [bots[b] for b, s in bot_scenes.items() if scene.id in s]
+        if not in_guild_other_bots:
             return
 
-        notifier_targets = await fetch_targets(bot)
-        notifies = (
-            filter_targets_by_guild_id(notifier_targets, scene.id)
-            if notifier_targets
-            else None
-        )
         await quit_and_notice(
             scene.id,
-            in_group_other_bots,
+            in_guild_other_bots,
             bot,
-            notifies,
+            await fetch_notify_targets(bot, scene),
         )

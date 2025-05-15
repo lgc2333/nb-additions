@@ -52,6 +52,24 @@ bot_guild_join_listener = BotGroupJoinListenerCollector()
 
 # endregion
 
+# region group join listener
+
+type GuildQuitListener = Callable[[BaseBot, Session], Awaitable[Any]]
+
+
+class BotGroupQuitListenerCollector(
+    AsyncCallableListCollector[[BaseBot, Session], Any],
+):
+    if TYPE_CHECKING:
+
+        @override
+        def __call__[T: GuildQuitListener](self, obj: T) -> T: ...
+
+
+bot_guild_quit_listener = BotGroupQuitListenerCollector()
+
+# endregion
+
 # region friend request listener
 
 

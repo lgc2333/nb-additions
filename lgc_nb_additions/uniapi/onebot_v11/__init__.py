@@ -5,6 +5,7 @@ from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import (
     Bot,
     FriendRequestEvent,
+    GroupDecreaseNoticeEvent,
     GroupIncreaseNoticeEvent,
     GroupRequestEvent,
 )
@@ -14,6 +15,7 @@ from ..collectors import (
     FriendRequestData,
     GuildInviteRequestData,
     bot_guild_join_listener,
+    bot_guild_quit_listener,
     friend_request_listener,
     friend_request_processor,
     guild_invite_request_listener,
@@ -36,6 +38,15 @@ async def bot_group_join_rule(ev: GroupIncreaseNoticeEvent):
 @on_notice(rule=bot_group_join_rule).handle()
 async def _(bot: Bot, ev: Uninfo):
     await bot_guild_join_listener.gather(bot, ev)
+
+
+async def bot_group_quit_rule(ev: GroupDecreaseNoticeEvent):
+    return ev.is_tome()
+
+
+@on_notice(rule=bot_group_quit_rule).handle()
+async def _(bot: Bot, ev: Uninfo):
+    await bot_guild_quit_listener.gather(bot, ev)
 
 
 @on_request().handle()
