@@ -20,5 +20,9 @@ __plugin_meta__ = PluginMetadata(
     homepage="https://github.com/lgc2333/nb-additions",
     config=None,
     supported_adapters=inherit_supported_adapters("lgc_nb_additions.uniapi"),
-    extra={"License": "MIT", "Author": "LgCookie"},
+    extra={
+        "License": "MIT",
+        "Author": "LgCookie",
+        "pmn": {"hidden": True},
+    },
 )

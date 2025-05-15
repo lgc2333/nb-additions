@@ -13,5 +13,9 @@ __plugin_meta__ = PluginMetadata(
     homepage="https://github.com/lgc2333/nb-additions",
     config=None,
     supported_adapters={"~onebot.v11"},
-    extra={"License": "MIT", "Author": "LgCookie"},
+    extra={
+        "License": "MIT",
+        "Author": "LgCookie",
+        "pmn": {"hidden": True},
+    },
 )
