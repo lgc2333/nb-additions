@@ -6,6 +6,7 @@ dependencies = [
     "cookit[loguru]>=0.11.1",
     "nonebot-plugin-alconna>=0.57.6",
     "nonebot-plugin-apscheduler>=0.5.0",
+    "nonebot-plugin-localstore>=0.7.4",
     "nonebot-plugin-orm>=0.7.7",
     "nonebot-plugin-uninfo>=0.7.3",
     "nonebot2>=2.4.1",
