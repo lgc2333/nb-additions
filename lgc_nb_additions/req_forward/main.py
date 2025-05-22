@@ -15,7 +15,7 @@ from ..uniapi.collectors import (
     guild_invite_request_listener,
     guild_invite_request_processor,
 )
-from ..utils.common import confuse_string, extract_guild_scene
+from ..utils.common import confuse_string, extract_guild_scene, get_bot_for_target
 from .config import config
 from .db import (
     EXPIRE_TIME,
@@ -119,7 +119,7 @@ async def _(bot: BaseBot, data: FriendRequestData):
                 f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意："
                 f"\nconfirm-req {rid}",
             ),
-            bot=await config.parsed_target.select(),
+            bot=await get_bot_for_target(config.parsed_target),
         )
 
 
@@ -157,5 +157,5 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
                 f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意：\n"
                 f"confirm-req {rid}",
             ),
-            bot=await config.parsed_target.select(),
+            bot=await get_bot_for_target(config.parsed_target),
         )

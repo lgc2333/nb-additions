@@ -27,7 +27,3 @@ config: ConfigModel = get_plugin_config(ConfigModel)
 
 if not config.parsed_target:
     logger.warning("Target unset, plugin will not work")
-if not config.alconna_apply_fetch_targets:
-    logger.warning(
-        "ALCONNA_APPLY_FETCH_TARGETS config not True, may impact initiative message send",
-    )

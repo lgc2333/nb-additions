@@ -2,13 +2,20 @@ import asyncio
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Coroutine
 from contextlib import suppress
-from functools import wraps
+from functools import partial, wraps
 from typing import Any
 
 from cookit import DecoListCollector, with_semaphore
 from debouncer import debounce
 from debouncer.debounce import Debounced
-from nonebot_plugin_alconna.uniseg import SupportAdapter, SupportScope, Target
+from nonebot.adapters import Bot as BaseBot
+from nonebot_plugin_alconna.uniseg import (
+    SupportAdapter,
+    SupportScope,
+    Target,
+    get_bot as alconna_get_bot,
+)
+from nonebot_plugin_alconna.uniseg.adapters import alter_get_fetcher
 from nonebot_plugin_uninfo import Session
 
 
@@ -71,6 +78,23 @@ def target_validator(v: str | None) -> str | None:
     if v:
         parse_target(v)
     return v
+
+
+async def bot_for_target_predicate(target: Target, bot: BaseBot) -> bool:
+    fetcher = alter_get_fetcher(bot.adapter.get_name())
+    if not fetcher:
+        return False
+    async for x in fetcher.fetch(bot, target):
+        if x.verify(target):
+            return True
+    return False
+
+
+async def get_bot_for_target(target: Target) -> BaseBot:
+    return await alconna_get_bot(
+        predicate=partial(bot_for_target_predicate, target),
+        index=0,
+    )
 
 
 def extract_guild_scene(ev: Session):
