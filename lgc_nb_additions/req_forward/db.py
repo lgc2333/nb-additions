@@ -4,7 +4,7 @@ import string
 from datetime import UTC, datetime, timedelta
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 EXPIRE_TIME = timedelta(minutes=30)
@@ -38,14 +38,13 @@ class RequestInfo(Model):
     user_id: Mapped[str]
     identifier: Mapped[str]
     modified_at: Mapped[datetime] = mapped_column(
-        DateTime,
         server_default=func.now(),
         server_onupdate=func.now(),
     )
 
 
 def is_expired(info: RequestInfo):
-    return (datetime.now(UTC) - info.modified_at) > EXPIRE_TIME
+    return (datetime.now(UTC) - info.modified_at.astimezone(UTC)) > EXPIRE_TIME
 
 
 # async def clear_expired_data():
