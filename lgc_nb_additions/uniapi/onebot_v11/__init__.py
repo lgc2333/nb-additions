@@ -121,9 +121,9 @@ async def fetch_and_doubt_req(
         data = GetDoubtFriendsAddRequestsData.model_validate(raw).root
         if not time_after:
             return data
-        index = next((i for i, x in enumerate(data) if x.time < time_after), 0)
-        if index > 0:
-            return data[:index]
+        end = next((i for i, x in enumerate(data, 1) if x.time <= time_after), 0)
+        if end > 0:
+            return data[:end]
     return []
 
 
@@ -134,9 +134,19 @@ async def get_and_dispatch_doubt_friend_req(bots: list[Bot] | None = None):
     times = get_last_fetch_doubt_friends_times()
     set_last_fetch_doubt_friends_time({**times, **{b.self_id: now for b in bots}})
 
+    logger.debug(
+        f"Fetching doubt friend requests for bots: {[b.self_id for b in bots]}",
+    )
     bot_requests = await asyncio.gather(
         *(fetch_and_doubt_req(b, times.get(b.self_id, now)) for b in bots),
     )
+    requests_len = sum(len(x) for x in bot_requests)
+    log_msg = f"Fetched {requests_len} doubt friend requests"
+    if requests_len:
+        logger.info(log_msg)
+    else:
+        logger.debug(log_msg)
+
     for bot, requests in zip(bots, bot_requests):
         for req in requests:
             data = FriendRequestData(
