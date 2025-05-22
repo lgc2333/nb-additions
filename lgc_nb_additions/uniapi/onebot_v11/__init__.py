@@ -173,9 +173,9 @@ async def get_and_dispatch_doubt_friend_req(bots: list[Bot] | None = None):
 scheduler.add_job(get_and_dispatch_doubt_friend_req, "interval", minutes=1)
 
 
-@driver.on_bot_connect
-async def _(bot: Bot):
-    asyncio.create_task(logger.catch(get_and_dispatch_doubt_friend_req)([bot]))
+# @driver.on_bot_connect
+# async def _(bot: Bot):
+#     asyncio.create_task(logger.catch(get_and_dispatch_doubt_friend_req)([bot]))
 
 
 @friend_request_processor(Bot)
