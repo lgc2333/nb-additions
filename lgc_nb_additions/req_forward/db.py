@@ -44,7 +44,7 @@ class RequestInfo(Model):
     )
 
 
-async def is_expired(info: RequestInfo):
+def is_expired(info: RequestInfo):
     return (datetime.now(UTC) - info.modified_at) > EXPIRE_TIME
 
 
