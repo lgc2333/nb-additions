@@ -16,7 +16,7 @@ from ..uniapi.collectors import (
 )
 from ..utils.common import confuse_string, extract_guild_scene
 from .config import config
-from .db import RequestInfo, RequestStatus, RequestType, generate_request_id
+from .db import RequestInfo, RequestStatus, RequestType, generate_request_id, is_expired
 
 alc = Alconna(
     "confirm-req",
@@ -41,9 +41,9 @@ async def _(
     ss: async_scoped_session,
     q_req_id: Query[str] = Query("~req_id"),
 ):
-    async with ss.begin() as t:
+    async with ss.begin():
         req = await ss.get(RequestInfo, q_req_id.result)
-        if (not req) or req.status is RequestStatus.CONFIRMED:
+        if (not req) or (req.status is RequestStatus.CONFIRMED) or is_expired(req):
             await UniMessage.text("未找到该请求").finish(reply_to=True)
 
         if req.user_id != ev.user.id and not await SUPERUSER(bot, raw_ev):
@@ -73,7 +73,7 @@ async def _(
 
         if confirm_status is not False:
             req.status = RequestStatus.CONFIRMED
-            await t.commit()
+            await ss.commit()
 
     status_msg = {
         True: "请求已通过",

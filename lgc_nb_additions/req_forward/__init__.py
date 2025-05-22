@@ -16,3 +16,6 @@ __plugin_meta__ = PluginMetadata(
         "pmn": {"hidden": True},
     },
 )
+
+# driver = get_driver()
+# driver.on_startup(clear_expired_data)

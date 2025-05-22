@@ -1,5 +1,4 @@
-"""
-init
+"""init
 
 迁移 ID: f1c5ad2542ee
 父迁移:

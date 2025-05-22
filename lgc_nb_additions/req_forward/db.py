@@ -1,10 +1,13 @@
 import enum
 import random
 import string
+from datetime import UTC, datetime, timedelta
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import String
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
+
+EXPIRE_TIME = timedelta(minutes=30)
 
 
 class RequestStatus(enum.StrEnum):
@@ -34,3 +37,27 @@ class RequestInfo(Model):
     bot_id: Mapped[str]
     user_id: Mapped[str]
     identifier: Mapped[str]
+    modified_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+async def is_expired(info: RequestInfo):
+    return (datetime.now(UTC) - info.modified_at) > EXPIRE_TIME
+
+
+# async def clear_expired_data():
+#     logger.info("Cleaning expired requests...")
+#     async with get_session() as ss, ss.begin() as tr:
+#         result = await ss.execute(
+#             delete(RequestInfo).where(
+#                 (datetime.now(UTC) - RequestInfo.modified_at) > EXPIRE_TIME,
+#             ),
+#         )
+#         await tr.commit()
+#     logger.success(f"{result.rowcount} rows affected")
+
+
+# scheduler.add_job(clear_expired_data, trigger="interval", minutes=15)
