@@ -1,5 +1,5 @@
 from arclet.alconna import Alconna, Arg, Args, CommandMeta
-from cookit import format_timedelta
+from cookit import format_timedelta_human_zh_spc
 from nonebot import get_bot, logger
 from nonebot.adapters import Bot as BaseBot, Event as BaseEvent
 from nonebot.permission import SUPERUSER
@@ -115,8 +115,8 @@ async def _(bot: BaseBot, data: FriendRequestData):
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的好友请求"
-                f"，请您在 {format_timedelta(EXPIRE_TIME)} 内发送以下内容自行同意："
+                f" ({uid}) 的好友请求，请您在"
+                f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意："
                 f"\nconfirm-req {rid}",
             ),
             bot=await config.parsed_target.select(),
@@ -153,8 +153,8 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的邀群请求 ({confuse_string(scene.id)})"
-                f"，请您在 {format_timedelta(EXPIRE_TIME)} 内发送以下内容自行同意：\n"
+                f" ({uid}) 的邀群请求 ({confuse_string(scene.id)})，请您在"
+                f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意：\n"
                 f"confirm-req {rid}",
             ),
             bot=await config.parsed_target.select(),

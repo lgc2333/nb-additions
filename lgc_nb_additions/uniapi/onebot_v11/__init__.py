@@ -121,8 +121,10 @@ async def fetch_and_doubt_req(
         data = GetDoubtFriendsAddRequestsData.model_validate(raw).root
         if not time_after:
             return data
-        end = next((i for i, x in enumerate(data, 1) if x.time <= time_after), 0)
-        if end > 0:
+        if data:
+            end = next((i for i, x in enumerate(data) if x.time <= time_after), None)
+            if end is None:
+                return data
             return data[:end]
     return []
 
