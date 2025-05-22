@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -29,7 +28,8 @@ def upgrade(name: str = "") -> None:
                 "modified_at",
                 sa.DateTime(),
                 nullable=False,
-                default=datetime.now(UTC),
+                server_default=sa.func.now(),
+                server_onupdate=sa.func.now(),
             ),
         )
     # ### end Alembic commands ###

@@ -4,7 +4,7 @@ import string
 from datetime import UTC, datetime, timedelta
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 EXPIRE_TIME = timedelta(minutes=30)
@@ -39,8 +39,8 @@ class RequestInfo(Model):
     identifier: Mapped[str]
     modified_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        server_onupdate=func.now(),
     )
 
 
