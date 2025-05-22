@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import time
 from typing import TYPE_CHECKING, cast
@@ -43,7 +44,7 @@ driver = get_driver()
 
 DOUBT_FRIEND_PFX = "doubt:"
 LAST_FETCH_DOUBT_FRIENDS_TIME_FILE = (
-    get_cache_dir("uniapi") / "onebot_v11_last_fetch_doubt_friends_time.txt"
+    get_cache_dir("uniapi") / "onebot_v11_last_fetch_doubt_friends_time.json"
 )
 
 
@@ -61,22 +62,18 @@ class DoubtFriendRequestInfo(BaseModel):
 GetDoubtFriendsAddRequestsData = RootModel[list[DoubtFriendRequestInfo]]
 
 
-def set_last_fetch_doubt_friends_time(v: int | None = None) -> int:
-    if not v:
-        v = int(time.time())
+def set_last_fetch_doubt_friends_time(data: dict[str, int]):
     if not (p := LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.parent).exists():
         p.mkdir(parents=True)
-    LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.write_text(str(v), "u8")
-    return v
+    LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.write_text(json.dumps(data), "u8")
 
 
-def get_last_fetch_doubt_friends_time() -> int:
-    if not LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.exists():
-        return set_last_fetch_doubt_friends_time()
-    return int(LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.read_text("u8"))
-
-
-set_last_fetch_doubt_friends_time()
+def get_last_fetch_doubt_friends_times() -> dict[str, int]:
+    if LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.exists():
+        return json.loads(
+            LAST_FETCH_DOUBT_FRIENDS_TIME_FILE.read_text("u8"),
+        )
+    return {}
 
 
 @guild_quitter(Bot)
@@ -131,11 +128,15 @@ async def fetch_and_doubt_req(
 
 
 async def get_and_dispatch_doubt_friend_req(bots: list[Bot] | None = None):
-    t = get_last_fetch_doubt_friends_time()
-    set_last_fetch_doubt_friends_time()
-
     bots = bots or cast("list[Bot]", await get_bot(adapter="OneBot V11"))
-    bot_requests = await asyncio.gather(*(fetch_and_doubt_req(b, t) for b in bots))
+
+    now = int(time.time())
+    times = get_last_fetch_doubt_friends_times()
+    set_last_fetch_doubt_friends_time({**times, **{b.self_id: now for b in bots}})
+
+    bot_requests = await asyncio.gather(
+        *(fetch_and_doubt_req(b, times.get(b.self_id, now)) for b in bots),
+    )
     for bot, requests in zip(bots, bot_requests):
         for req in requests:
             data = FriendRequestData(

@@ -1,4 +1,5 @@
 from arclet.alconna import Alconna, Arg, Args, CommandMeta
+from cookit import format_timedelta
 from nonebot import get_bot, logger
 from nonebot.adapters import Bot as BaseBot, Event as BaseEvent
 from nonebot.permission import SUPERUSER
@@ -16,7 +17,14 @@ from ..uniapi.collectors import (
 )
 from ..utils.common import confuse_string, extract_guild_scene
 from .config import config
-from .db import RequestInfo, RequestStatus, RequestType, generate_request_id, is_expired
+from .db import (
+    EXPIRE_TIME,
+    RequestInfo,
+    RequestStatus,
+    RequestType,
+    generate_request_id,
+    is_expired,
+)
 
 alc = Alconna(
     "confirm-req",
@@ -107,7 +115,9 @@ async def _(bot: BaseBot, data: FriendRequestData):
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的好友请求，请您发送以下内容自行同意：\nconfirm-req {rid}",
+                f" ({uid}) 的好友请求"
+                f"，请您在 {format_timedelta(EXPIRE_TIME)} 内发送以下内容自行同意："
+                f"\nconfirm-req {rid}",
             ),
             bot=await config.parsed_target.select(),
         )
@@ -144,7 +154,7 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
             .at(uid)
             .text(
                 f" ({uid}) 的邀群请求 ({confuse_string(scene.id)})"
-                f"，请您发送以下内容自行同意：\n"
+                f"，请您在 {format_timedelta(EXPIRE_TIME)} 内发送以下内容自行同意：\n"
                 f"confirm-req {rid}",
             ),
             bot=await config.parsed_target.select(),
