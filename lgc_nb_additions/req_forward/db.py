@@ -8,6 +8,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 EXPIRE_TIME = timedelta(minutes=30)
+EXPIRE_TIME_STR = "30 分钟"
 
 
 class RequestStatus(enum.StrEnum):

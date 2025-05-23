@@ -1,5 +1,4 @@
 from arclet.alconna import Alconna, Arg, Args, CommandMeta
-from cookit import format_timedelta_human_zh_spc
 from nonebot import get_bot, logger
 from nonebot.adapters import Bot as BaseBot, Event as BaseEvent
 from nonebot.permission import SUPERUSER
@@ -15,10 +14,10 @@ from ..uniapi.collectors import (
     guild_invite_request_listener,
     guild_invite_request_processor,
 )
-from ..utils.common import confuse_string, extract_guild_scene, get_bot_for_target
+from ..utils.common import extract_guild_scene, get_bot_for_target
 from .config import config
 from .db import (
-    EXPIRE_TIME,
+    EXPIRE_TIME_STR,
     RequestInfo,
     RequestStatus,
     RequestType,
@@ -115,8 +114,7 @@ async def _(bot: BaseBot, data: FriendRequestData):
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的好友请求，请您在"
-                f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意："
+                f" 的好友请求，请您在 {EXPIRE_TIME_STR} 内发送以下内容自行操作："
                 f"\nconfirm-req {rid}",
             ),
             bot=await get_bot_for_target(config.parsed_target),
@@ -153,8 +151,8 @@ async def _(bot: BaseBot, data: GuildInviteRequestData):
             UniMessage.text("收到来自 ")
             .at(uid)
             .text(
-                f" ({uid}) 的邀群请求 ({confuse_string(scene.id)})，请您在"
-                f" {format_timedelta_human_zh_spc(EXPIRE_TIME)} 内发送以下内容自行同意：\n"
+                f" 的邀群请求 ({scene.id[0]}...{scene.id[-1]})"
+                f"，请您在 {EXPIRE_TIME_STR} 内发送以下内容自行操作：\n"
                 f"confirm-req {rid}",
             ),
             bot=await get_bot_for_target(config.parsed_target),

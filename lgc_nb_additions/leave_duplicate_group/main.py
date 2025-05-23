@@ -39,11 +39,8 @@ async def quit_and_notice(
             with warning_suppress(f"Failed to send tip to {target}"):
                 await target.send(
                     (
-                        "时雨通知：\n"
-                        "检测到多个同系统账号同时在此群活动，"
-                        "为避免消息重复响应出现意外情况，"
-                        "系统将仅保留此账号提供服务。\n"
-                        "感谢您的理解与支持！"
+                        "为避免多账号同时接收相同消息导致出现意外情况，"
+                        "系统将仅保留此账号提供服务，感谢理解"
                     ),
                     bot=notifier,
                 )

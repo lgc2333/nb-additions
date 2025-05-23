@@ -170,7 +170,7 @@ async def get_and_dispatch_doubt_friend_req(bots: list[Bot] | None = None):
             await asyncio.sleep(random.uniform(2, 5))
 
 
-scheduler.add_job(get_and_dispatch_doubt_friend_req, "interval", minutes=5)
+scheduler.add_job(get_and_dispatch_doubt_friend_req, "interval", minutes=30)
 
 
 # @driver.on_bot_connect
